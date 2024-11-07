@@ -23,8 +23,10 @@ In this assignment I developed a server with nodejs and typescript.
     GOOGLE_CLIENT_ID = ***
     GOOGLE_CLIENT_SECRET = ***
     GOOGLE_REDIRECT_URI = ***
-    GOOGLE_REFRESH_TOKEN = ***
     OPENAI_SECRECT_KEY = ***
+    REDIS_PORT = ***
+    REDIS_PASSWORD = ***
+    REDIS_HOST = ***
     ```
 
 4. In you google cloud console, turn on the gmail apis, and created an oauth service where you need to paste the GOOGLE_REDIRECT_URI. which will be http://localhost:PORT/auth/google/callback
@@ -35,7 +37,7 @@ In this assignment I developed a server with nodejs and typescript.
     ```
     npm run dev
     ```
-6. Now just go to http://localhost:PORT in your browser to acess it.
+6. Now just go to http://localhost:2000 in your browser to acess it.
 
 ## Folder Structure
 

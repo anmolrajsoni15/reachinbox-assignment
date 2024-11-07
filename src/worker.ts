@@ -5,86 +5,92 @@ import { GmailService } from "./services/gmail.service";
 import { generateReplyContent, getLabel } from "./utils/utils";
 
 const fetchEmailsQueue = new Queue(FETCH_EMAILS_QUEUE, {
-    connection: REDIS_CONFIG
+  connection: REDIS_CONFIG,
 });
 
 const sendRepliesQueue = new Queue(SEND_REPLIES_QUEUE, {
-    connection: REDIS_CONFIG
+  connection: REDIS_CONFIG,
 });
 
 const emailFetchingWorker = new Worker(
-    FETCH_EMAILS_QUEUE, 
-    async (job) => {
-        const { tokens } = job.data;
-        const gmailService = new GmailService(tokens);
-        
-        const emails = await gmailService.listEmails();
-        console.log(emails);
-        
-        for (const email of emails) {
-            await sendRepliesQueue.add('process-reply', {
-                tokens,
-                emailData: email
-            });
-        }
-        
-        return `Processed ${emails.length} emails`;
-    },
-    {
-        connection: REDIS_CONFIG
+  FETCH_EMAILS_QUEUE,
+  async (job) => {
+    const { tokens } = job.data;
+    const gmailService = new GmailService(tokens);
+
+    const emails = await gmailService.listEmails();
+    console.log(emails);
+
+    for (const email of emails) {
+      await sendRepliesQueue.add("process-reply", {
+        tokens,
+        emailData: email,
+      });
     }
+
+    return `Processed ${emails.length} emails`;
+  },
+  {
+    connection: REDIS_CONFIG,
+  }
 );
 
 const replySendingWorker = new Worker(
-    SEND_REPLIES_QUEUE, 
-    async (job) => {
-        const { tokens, emailData } = job.data;
-        const gmailService = new GmailService(tokens);
+  SEND_REPLIES_QUEUE,
+  async (job) => {
+    const { tokens, emailData } = job.data;
+    const gmailService = new GmailService(tokens);
 
-        const label = await getLabel(emailData.content);
+    const label = await getLabel(emailData.content);
 
-        const content = await generateReplyContent(emailData.content,emailData.subject,label);
-        
-        const replyContent = `Thank you for your email regarding "${content}".\n\n`
-            + "I am currently out of office and will respond to your message as soon as possible.\n\n"
-            + "Best regards";
+    const content = await generateReplyContent(
+      emailData.content,
+      emailData.subject,
+      label
+    );
 
-        const subject = `[${label.toUpperCase()}] ${emailData.subject}`;
-        
-        const replyData: ReplyData = {
-            // to: emailData.from,
-            to: "anmolrajsoni15@gmail.com",
-            subject: subject,
-            content: replyContent,
-            threadId: emailData.threadId,
-            label: label
-        };
+    const replyContent =
+      `Thank you for your email regarding "${content}".\n\n` +
+      "I am currently out of office and will respond to your message as soon as possible.\n\n" +
+      "Best regards";
 
-        console.log(replyData);
-        
-        await gmailService.sendReply(replyData);
+    const subject = `[${label.toUpperCase()}] ${emailData.subject}`;
 
-        console.log(`Sent reply to ${emailData.from}`);
-        
-        // return `Sent reply to ${emailData.from}`;
-    },
-    { 
-        connection: REDIS_CONFIG,
-    }
+    const replyData: ReplyData = {
+      // to: emailData.from,
+      to: "anmolrajsoni15@gmail.com",
+      subject: subject,
+      content: replyContent,
+      threadId: emailData.threadId,
+      label: label,
+    };
+
+    console.log(replyData);
+
+    await gmailService.sendReply(replyData);
+
+    console.log(`Sent reply to ${emailData.from}`);
+  },
+  {
+    connection: REDIS_CONFIG,
+  }
 );
 
-
 export async function startEmailProcessing(tokens: any) {
-    try {
-        await fetchEmailsQueue.add('fetch-emails', { tokens }, {
-            repeat: {
-                every: 5 * 60 * 1000
-            }
-        });
-        
-        console.log('Email processing started');
-    } catch (error) {
-        console.error('Error starting email processing:', error);
-        throw error;
-    }
+  try {
+    await fetchEmailsQueue.add(
+      "fetch-emails",
+      { tokens },
+      {
+        repeat: {
+          every: 2 * 60 * 1000,
+        },
+      }
+    );
+
+    console.log("Email processing started. Wait for emails to be fetched...");
+  } catch (error) {
+    console.error("Error starting email processing:", error);
+    throw error;
+  }
 }
